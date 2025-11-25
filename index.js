@@ -2,51 +2,97 @@ const express = require("express");
 const app = express();
 const PORT = 3000;
 
+// leer JSON del body
 app.use(express.json());
 
-let users = [];
+// "Base de datos" en memoria
+let users = [
+  { id: 1, nombre: "Ana", email: "ana@example.com", password: "1234" },
+  { id: 2, nombre: "Luis", email: "luis@example.com", password: "abcd" },
+];
 
-// CREATE - crear usuario
-app.post("/users", (req, res) => {
-  const { name, email } = req.body;
-
-  const newUser = {
-    id: Date.now(),
-    name,
-    email
-  };
-
-  users.push(newUser);
-  res.status(201).json(newUser);
+// RUTA HOME
+app.get("/", (req, res) => {
+  res.send("API CRUD de usuarios - rama feature/login-form");
 });
 
-// READ - listar usuarios
+// LISTAR USUARIOS 
 app.get("/users", (req, res) => {
   res.json(users);
 });
 
-// UPDATE - actualizar usuario
-app.put("/users/:id", (req, res) => {
-  const id = Number(req.params.id);
-  const { name, email } = req.body;
+// CREAR USUARIO 
+app.post("/users", (req, res) => {
+  const { nombre, email, password } = req.body;
 
-  const user = users.find(u => u.id === id);
-
-  if (!user) {
-    return res.status(404).json({ message: "Usuario no encontrado" });
+  if (!nombre || !email || !password) {
+    return res.status(400).json({ mensaje: "nombre, email y password son obligatorios" });
   }
 
-  user.name = name;
-  user.email = email;
+  const nuevoUsuario = {
+    id: Date.now(),
+    nombre,
+    email,
+    password,
+  };
 
-  res.json(user);
+  users.push(nuevoUsuario);
+  res.status(201).json(nuevoUsuario);
 });
 
-// DELETE - eliminar usuario
+// ACTUALIZAR USUARIO
+app.put("/users/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const { nombre, email, password } = req.body;
+
+  const indice = users.findIndex((u) => u.id === id);
+  if (indice === -1) {
+    return res.status(404).json({ mensaje: "Usuario no encontrado" });
+  }
+
+  users[indice] = {
+    ...users[indice],
+    nombre: nombre ?? users[indice].nombre,
+    email: email ?? users[indice].email,
+    password: password ?? users[indice].password,
+  };
+
+  res.json(users[indice]);
+});
+
+// ELIMINAR USUARIO
 app.delete("/users/:id", (req, res) => {
   const id = Number(req.params.id);
-  users = users.filter(u => u.id !== id);
-  res.status(204).end();
+  const existe = users.some((u) => u.id === id);
+
+  if (!existe) {
+    return res.status(404).json({ mensaje: "Usuario no encontrado" });
+  }
+
+  users = users.filter((u) => u.id !== id);
+  res.json({ mensaje: "Usuario eliminado correctamente" });
+});
+
+// LOGIN - FEATURE de esta rama
+app.post("/login", (req, res) => {
+  const { email, password } = req.body;
+
+  const usuario = users.find(
+    (u) => u.email === email && u.password === password
+  );
+
+  if (!usuario) {
+    return res.status(401).json({ mensaje: "Credenciales inválidas" });
+  }
+
+  res.json({
+    mensaje: "Login exitoso",
+    usuario: {
+      id: usuario.id,
+      nombre: usuario.nombre,
+      email: usuario.email,
+    },
+  });
 });
 
 app.listen(PORT, () => {
